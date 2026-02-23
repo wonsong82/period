@@ -190,29 +190,6 @@ export default function CalendarPage() {
           value={String(sortedDates.length)}
         />
       </div>
-
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
-            disabled={page >= totalPages - 1}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm text-stone-600 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            ← Older
-          </button>
-          <span className="text-xs text-stone-400">
-            Page {page + 1} of {totalPages}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.max(p - 1, 0))}
-            disabled={page <= 0}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm text-stone-600 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            Newer →
-          </button>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         {visibleMonths.map((month) => (
           <MonthGrid
@@ -226,6 +203,24 @@ export default function CalendarPage() {
           />
         ))}
       </div>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4">
+          <button
+            onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
+            disabled={page >= totalPages - 1}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-stone-200 text-stone-500 hover:bg-stone-50 hover:text-stone-800 disabled:opacity-20 disabled:cursor-not-allowed transition-colors shadow-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clipRule="evenodd" /></svg>
+          </button>
+          <button
+            onClick={() => setPage((p) => Math.max(p - 1, 0))}
+            disabled={page <= 0}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-stone-200 text-stone-500 hover:bg-stone-50 hover:text-stone-800 disabled:opacity-20 disabled:cursor-not-allowed transition-colors shadow-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" /></svg>
+          </button>
+        </div>
+      )}
 
       <Legend />
     </div>
