@@ -84,7 +84,7 @@ export default function CalendarPage() {
   }, []);
 
   const sortedDates = useMemo(
-    () => (data ? [...data.periodStartDates].sort() : []),
+    () => (data?.periodStartDates ? [...data.periodStartDates].sort() : []),
     [data],
   );
 
