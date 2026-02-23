@@ -26,7 +26,9 @@ export default function SettingsPage() {
   const fetchData = useCallback(() => {
     fetch("/api/data")
       .then((r) => r.json())
-      .then(setData)
+      .then((d) => {
+        if (d && Array.isArray(d.periodStartDates)) setData(d);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -92,7 +94,7 @@ export default function SettingsPage() {
   }
   if (!data) return null;
 
-  const sorted = [...data.periodStartDates].sort();
+  const sorted = [...(data.periodStartDates ?? [])].sort();
   const cycleLength = calculateCycleLength(sorted);
   const predictions =
     sorted.length >= 2 ? predictNextPeriods(sorted, 2) : [];

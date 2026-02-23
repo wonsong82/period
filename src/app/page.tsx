@@ -79,7 +79,9 @@ export default function CalendarPage() {
   useEffect(() => {
     fetch("/api/data")
       .then((res) => res.json())
-      .then(setData)
+      .then((d) => {
+        if (d && Array.isArray(d.periodStartDates)) setData(d);
+      })
       .finally(() => setLoading(false));
   }, []);
 
