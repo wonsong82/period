@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import type { PeriodData, DayInfo, DayType } from "@/lib/types";
 import {
@@ -12,6 +12,7 @@ import {
   predictNextPeriods,
 } from "@/lib/calculations";
 
+const MONTHS_PER_PAGE = 6;
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = [
   "January",
@@ -53,7 +54,6 @@ function riskToColor(risk: number): { bg: string; text: string } {
   };
 }
 
-
 function riskLabel(risk: number): string {
   if (risk === 0) return "Safe (0%)";
   if (risk <= 15) return `Very Low (${risk}%)`;
@@ -62,7 +62,6 @@ function riskLabel(risk: number): string {
   if (risk <= 85) return `High (${risk}%)`;
   return `Very High (${risk}%)`;
 }
-
 
 function riskLabelColor(risk: number): string {
   if (risk <= 15) return "text-emerald-600";
@@ -75,6 +74,8 @@ function riskLabelColor(risk: number): string {
 export default function CalendarPage() {
   const [data, setData] = useState<PeriodData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
 
   useEffect(() => {
     fetch("/api/data")
@@ -102,6 +103,15 @@ export default function CalendarPage() {
     return getMonthsBetween(range.startMonth, range.endMonth);
   }, [sortedDates, data]);
 
+  const totalPages = Math.ceil(months.length / MONTHS_PER_PAGE);
+
+  const visibleMonths = useMemo(() => {
+    const startFromEnd = months.length - (page + 1) * MONTHS_PER_PAGE;
+    const start = Math.max(0, startFromEnd);
+    const end = start + MONTHS_PER_PAGE;
+    return months.slice(start, end);
+  }, [months, page]);
+
   const cycleLength = useMemo(
     () => calculateCycleLength(sortedDates),
     [sortedDates],
@@ -110,6 +120,21 @@ export default function CalendarPage() {
   const predictions = useMemo(
     () => (sortedDates.length >= 2 ? predictNextPeriods(sortedDates, 2) : []),
     [sortedDates],
+  );
+
+  const todayStr = formatDate(new Date());
+
+  const headerInfo = useMemo(() => {
+    if (!calendarData) return null;
+    if (selectedDate) return calendarData.get(selectedDate) ?? null;
+    return calendarData.get(todayStr) ?? null;
+  }, [calendarData, selectedDate, todayStr]);
+
+  const handleDayClick = useCallback(
+    (dateStr: string) => {
+      setSelectedDate(dateStr === selectedDate ? null : dateStr);
+    },
+    [selectedDate],
   );
 
   if (loading) {
@@ -142,12 +167,14 @@ export default function CalendarPage() {
     );
   }
 
-  const todayStr = formatDate(new Date());
-  const todayInfo = calendarData?.get(todayStr) ?? null;
-
   return (
     <div className="space-y-6">
-      <TodayStatus info={todayInfo} />
+      <DayStatus
+        info={headerInfo}
+        selectedDate={selectedDate}
+        todayStr={todayStr}
+        onClear={() => setSelectedDate(null)}
+      />
 
       <div className="flex flex-wrap gap-3 text-sm">
         <Stat label="Cycle Length" value={`${cycleLength} days`} />
@@ -164,14 +191,38 @@ export default function CalendarPage() {
         />
       </div>
 
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
+            disabled={page >= totalPages - 1}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm text-stone-600 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            ← Older
+          </button>
+          <span className="text-xs text-stone-400">
+            Page {page + 1} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.max(p - 1, 0))}
+            disabled={page <= 0}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm text-stone-600 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            Newer →
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-        {months.map((month) => (
+        {visibleMonths.map((month) => (
           <MonthGrid
             key={`${month.getFullYear()}-${month.getMonth()}`}
             year={month.getFullYear()}
             month={month.getMonth()}
             calendarData={calendarData!}
             todayStr={todayStr}
+            selectedDate={selectedDate}
+            onDayClick={handleDayClick}
           />
         ))}
       </div>
@@ -181,20 +232,41 @@ export default function CalendarPage() {
   );
 }
 
-function TodayStatus({ info }: { info: DayInfo | null }) {
-  const dateLabel = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+function DayStatus({
+  info,
+  selectedDate,
+  todayStr,
+  onClear,
+}: {
+  info: DayInfo | null;
+  selectedDate: string | null;
+  todayStr: string;
+  onClear: () => void;
+}) {
+  const isSelected = selectedDate !== null;
+  const displayDate = selectedDate ?? todayStr;
+  const dateLabel = new Date(displayDate + "T12:00:00").toLocaleDateString(
+    "en-US",
+    { weekday: "long", month: "long", day: "numeric" },
+  );
 
   return (
     <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2 className="text-sm font-medium text-stone-500 uppercase tracking-wide">
-            Today — {dateLabel}
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-medium text-stone-500 uppercase tracking-wide">
+              {isSelected ? dateLabel : `Today — ${dateLabel}`}
+            </h2>
+            {isSelected && (
+              <button
+                onClick={onClear}
+                className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
+              >
+                ✕ Back to today
+              </button>
+            )}
+          </div>
           {info ? (
             <div className="mt-1 flex items-center gap-2 flex-wrap">
               {TYPE_ICONS[info.type] && (
@@ -215,7 +287,9 @@ function TodayStatus({ info }: { info: DayInfo | null }) {
             </div>
           ) : (
             <p className="mt-1 text-stone-500">
-              Today is outside the tracked range
+              {isSelected
+                ? "This date is outside the tracked range"
+                : "Today is outside the tracked range"}
             </p>
           )}
         </div>
@@ -248,11 +322,15 @@ function MonthGrid({
   month,
   calendarData,
   todayStr,
+  selectedDate,
+  onDayClick,
 }: {
   year: number;
   month: number;
   calendarData: Map<string, DayInfo>;
   todayStr: string;
+  selectedDate: string | null;
+  onDayClick: (dateStr: string) => void;
 }) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const startDow = new Date(year, month, 1).getDay();
@@ -284,15 +362,19 @@ function MonthGrid({
             ? riskToColor(info.riskPercent)
             : { bg: "transparent", text: "#a8a29e" };
 
-          const todayRing = info?.isToday
-            ? "ring-2 ring-blue-500 ring-offset-1"
-            : "";
+          const isToday = dateStr === todayStr;
+          const isSelected = dateStr === selectedDate;
           const isFuture = dateStr > todayStr;
+
+          let ring = "";
+          if (isSelected) ring = "ring-2 ring-stone-800 ring-offset-1";
+          else if (isToday) ring = "ring-2 ring-blue-500 ring-offset-1";
 
           return (
             <div
               key={dateStr}
-              className={`relative aspect-square flex flex-col items-center justify-center rounded-md text-xs ${todayRing}`}
+              onClick={() => onDayClick(dateStr)}
+              className={`relative aspect-square flex flex-col items-center justify-center rounded-md text-xs cursor-pointer hover:ring-2 hover:ring-stone-300 hover:ring-offset-1 transition-shadow ${ring}`}
               style={{
                 backgroundColor: colors.bg,
                 color: colors.text,
@@ -321,7 +403,6 @@ function Legend() {
     <div className="bg-white rounded-xl border border-stone-200 p-4 shadow-sm">
       <h3 className="font-medium text-stone-700 mb-3">Legend</h3>
       <div className="space-y-3">
-
         <div>
           <div className="text-xs text-stone-500 mb-1">
             Pregnancy Risk (background color)
@@ -339,7 +420,6 @@ function Legend() {
           </div>
         </div>
 
-
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
           <LegendItem icon="🩸" label="Period Day" />
           <LegendItem icon="🥚" label="Ovulation Day" />
@@ -347,6 +427,10 @@ function Legend() {
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 rounded ring-2 ring-blue-500 ring-offset-1" />
             <span className="text-stone-600">Today</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded ring-2 ring-stone-800 ring-offset-1" />
+            <span className="text-stone-600">Selected</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 rounded bg-stone-200" style={{ opacity: 0.6 }} />
