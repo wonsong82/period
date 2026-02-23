@@ -4,7 +4,8 @@ import { PeriodData } from "@/lib/types";
 
 export async function GET() {
   try {
-    return NextResponse.json(getData());
+    const data = await getData();
+    return NextResponse.json(data);
   } catch {
     return NextResponse.json(
       { error: "Failed to read data" },
@@ -16,7 +17,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const body: PeriodData = await request.json();
-    saveData(body);
+    await saveData(body);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json(
