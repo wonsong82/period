@@ -37,7 +37,7 @@ export async function getData(): Promise<PeriodData> {
   );
   const row = rows[0];
   return {
-    periodStartDates: row.period_start_dates ?? [],
+    periodStartDates: Array.isArray(row.period_start_dates) ? row.period_start_dates : [],
     config: row.config as PeriodConfig,
   };
 }
